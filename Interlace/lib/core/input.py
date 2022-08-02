@@ -16,7 +16,7 @@ class InputHelper(object):
     @staticmethod
     def check_path(parser, arg):
         if not os.path.exists(arg):
-            parser.error("The path %s does not exist!" % arg)
+            parser.error(f"The path {arg} does not exist!")
         else:
             return arg
 
@@ -30,15 +30,15 @@ class InputHelper(object):
         try:
             ivalue = int(arg)
             if ivalue <= 0:
-                raise parser.ArgumentTypeError("%s is not a valid positive integer!" % arg)
+                raise parser.ArgumentTypeError(f"{arg} is not a valid positive integer!")
         except ValueError:
-            raise parser.ArgumentValueError("%s is not a a number!" % arg)
+            raise parser.ArgumentValueError(f"{arg} is not a a number!")
 
         return arg
 
     @staticmethod
     def _get_files_from_directory(arg):
-        files = list()
+        files = []
 
         for file in os.listdir(arg):
             location = os.path.join(arg, file)
@@ -73,11 +73,11 @@ class InputHelper(object):
         blocker = None
         for command in command_list:
             command = str(command).strip()
-            if len(command) == 0:
+            if not command:
                 continue
             # the start or end of a command block
             if (command.startswith('_block:') and command.endswith('_')) or\
-                    command == '_block_':
+                        command == '_block_':
                 # if this is the end of a block, then we're done
                 new_task_name = ''
                 if command.startswith('_block:'):
@@ -174,9 +174,11 @@ class InputHelper(object):
             target_specs = pre_process_target_spec(arguments.target)
         else:
             target_specs_file = arguments.target_list
-            if not isinstance(target_specs_file, TextIOWrapper):
-                if not sys.stdin.isatty():
-                    target_specs_file = sys.stdin
+            if (
+                not isinstance(target_specs_file, TextIOWrapper)
+                and not sys.stdin.isatty()
+            ):
+                target_specs_file = sys.stdin
             target_specs = (
                 target_spec.strip() for target_spec in target_specs_file
             )
@@ -188,7 +190,7 @@ class InputHelper(object):
 
         def parse_and_group_target_specs(target_specs, nocidr):
             str_targets = set()
-            ips_list = list()
+            ips_list = []
             for target_spec in target_specs:
                 if (
                     target_spec.startswith(".") or
@@ -200,16 +202,12 @@ class InputHelper(object):
                     if "-" in target_spec:
                         start_ip, post_dash_segment = target_spec.split("-")
                         end_ip = start_ip.rsplit(".", maxsplit=1)[0] + "." + \
-                            post_dash_segment
+                                post_dash_segment
                         target_spec = IPRange(start_ip, end_ip)
                     elif "*" in target_spec:
                         target_spec = glob_to_iprange(target_spec)
                     else:  # str IP addresses and str CIDR notations
-                        if "/" in target_spec:
-                            target_spec = IPSet((target_spec,))
-                        else:
-                            target_spec = [target_spec]
-                    
+                        target_spec = IPSet((target_spec,)) if "/" in target_spec else [target_spec]
                     for i in target_spec:
                         ips_list.append(str(i))
                     print(f"updating: {target_spec}")
@@ -250,10 +248,10 @@ class InputHelper(object):
             arguments.output = arguments.output[:-1]
 
         ports = InputHelper._process_port(arguments.port) if arguments.port \
-            else None
+                else None
 
         real_ports = InputHelper._process_port(arguments.realport) if \
-            arguments.realport else None
+                arguments.realport else None
 
         str_targets, ipset_targets = InputHelper._process_targets(
             arguments=arguments,
@@ -269,17 +267,13 @@ class InputHelper(object):
         else:
             random_file = None
 
-        tasks = list()
+        tasks = []
         if arguments.command:
             tasks.append(Task(arguments.command.rstrip('\n')))
         else:
             tasks = InputHelper._pre_process_commands(arguments.command_list)
 
-        if arguments.proto:
-            protocols = arguments.proto.split(",")
-        else:
-            protocols = None
-
+        protocols = arguments.proto.split(",") if arguments.proto else None
         # Calculate the tasks count, as we will not have access to the len() of
         # the tasks iterator
         tasks_count = len(tasks) * targets_count
@@ -312,8 +306,7 @@ class InputHelper(object):
             ipset_targets=tasks_data["ipset_targets"],
         )
 
-        ports = tasks_data["ports"]
-        if ports:
+        if ports := tasks_data["ports"]:
             tasks_generator_func = functools.partial(
                 InputHelper._replace_variable_in_commands,
                 tasks_generator_func=tasks_generator_func,
@@ -321,8 +314,7 @@ class InputHelper(object):
                 replacements=ports,
             )
 
-        real_ports = tasks_data["real_ports"]
-        if real_ports:
+        if real_ports := tasks_data["real_ports"]:
             tasks_generator_func = functools.partial(
                 InputHelper._replace_variable_in_commands,
                 tasks_generator_func=tasks_generator_func,
@@ -330,8 +322,7 @@ class InputHelper(object):
                 replacements=real_ports,
             )
 
-        random_file = tasks_data["random_file"]
-        if random_file:
+        if random_file := tasks_data["random_file"]:
             tasks_generator_func = functools.partial(
                 InputHelper._replace_variable_in_commands,
                 tasks_generator_func=tasks_generator_func,
@@ -339,8 +330,7 @@ class InputHelper(object):
                 replacements=[random_file],
             )
 
-        output = tasks_data["output"]
-        if output:
+        if output := tasks_data["output"]:
             tasks_generator_func = functools.partial(
                 InputHelper._replace_variable_in_commands,
                 tasks_generator_func=tasks_generator_func,
@@ -348,8 +338,7 @@ class InputHelper(object):
                 replacements=[output],
             )
 
-        protocols = tasks_data["protocols"]
-        if protocols:
+        if protocols := tasks_data["protocols"]:
             tasks_generator_func = functools.partial(
                 InputHelper._replace_variable_in_commands,
                 tasks_generator_func=tasks_generator_func,
@@ -357,8 +346,7 @@ class InputHelper(object):
                 replacements=protocols,
             )
 
-        proxy_list = tasks_data["proxy_list"]
-        if proxy_list:
+        if proxy_list := tasks_data["proxy_list"]:
             proxy_list_iterator = itertools.cycle(
                 proxy for proxy in (
                     proxy.strip() for proxy in proxy_list
@@ -385,11 +373,7 @@ class InputParser(object):
     def setup_parser():
         parser = ArgumentParser()
 
-        #Is stdin attached?
-        requireTargetArg = True
-        if not sys.stdin.isatty():
-            requireTargetArg = False
-
+        requireTargetArg = bool(sys.stdin.isatty())
         targets = parser.add_mutually_exclusive_group(required=requireTargetArg)
 
         targets.add_argument(

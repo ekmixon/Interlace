@@ -7,7 +7,7 @@ from tqdm import tqdm
 import platform
 
 if platform.system().lower() == 'linux':
-    shell = os.getenv("SHELL") if os.getenv("SHELL") else "/bin/sh"
+    shell = os.getenv("SHELL") or "/bin/sh"
 else:
     shell = None
 
@@ -109,13 +109,14 @@ class Pool(object):
         self.output = output
         self.max_workers = min(tasks_count, max_workers)
 
-        if not progress_bar:
-            self.tqdm = tqdm(total=tasks_count)
-        else:
-            self.tqdm = True
+        self.tqdm = True if progress_bar else tqdm(total=tasks_count)
 
     def run(self):
-        workers = [Worker(self.queue, self.timeout, self.output, self.tqdm) for w in range(self.max_workers)]
+        workers = [
+            Worker(self.queue, self.timeout, self.output, self.tqdm)
+            for _ in range(self.max_workers)
+        ]
+
 
         # run
         with ThreadPoolExecutor(self.max_workers) as executors:

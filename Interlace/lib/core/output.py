@@ -46,11 +46,7 @@ class OutputHelper(object):
         }
 
         if not self.silent:
-            if level == 1:
-                template = '[{time}] {leader} [{target}] {command} {message}'
-            else:
-                template = '[{time}] {leader} [{target}] {command} {message}'
-            
+            template = '[{time}] {leader} [{target}] {command} {message}'
             print(template.format(**format_args))
 
 
